@@ -1,5 +1,6 @@
 package com.hechang.codeagent;
 
+import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,10 +11,10 @@ import org.springframework.context.annotation.ComponentScan;
 @MapperScan("com.hechang.codeagent.mapper")
 @ComponentScan("com.hechang")
 @EnableDubbo
-public class CodeAgentApplication {
+public class CodeAgentUserApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(CodeAgentApplication.class, args);
+        SpringApplication.run(CodeAgentUserApplication.class, args);
     }
 
 }

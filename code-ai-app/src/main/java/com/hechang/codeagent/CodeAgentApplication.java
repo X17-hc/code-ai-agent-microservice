@@ -5,7 +5,6 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.context.annotation.ComponentScan;
 
 
 @SpringBootApplication(
@@ -18,7 +17,7 @@ import org.springframework.context.annotation.ComponentScan;
 public class CodeAgentApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(CodeAgentApplication.class, args);
+        SpringApplication.run(CodeAgentUserApplication.class, args);
     }
 
 }
