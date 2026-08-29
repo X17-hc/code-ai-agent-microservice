@@ -1,6 +1,5 @@
 package com.hechang.codeagent.utils;
 
-import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -21,7 +20,7 @@ public class SpringContextUtil implements ApplicationContextAware {
      * @param applicationContext spring的上下文
      */
     @Override
-    public void setApplicationContext(@NotNull ApplicationContext applicationContext) throws BeansException {
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         SpringContextUtil.applicationContext = applicationContext;
     }
 
@@ -45,4 +44,4 @@ public class SpringContextUtil implements ApplicationContextAware {
     public static <T> T getBean(String name, Class<T> clazz) {
         return applicationContext.getBean(name, clazz);
     }
-} 
+}
