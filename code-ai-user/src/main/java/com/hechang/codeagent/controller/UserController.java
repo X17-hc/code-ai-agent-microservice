@@ -9,6 +9,7 @@ import com.hechang.codeagent.constant.UserConstant;
 import com.hechang.codeagent.exception.BusinessException;
 import com.hechang.codeagent.exception.ErrorCode;
 import com.hechang.codeagent.exception.ThrowUtils;
+import com.hechang.codeagent.innerservice.InnerUserService;
 import com.hechang.codeagent.model.dto.user.*;
 import com.hechang.codeagent.model.entity.User;
 import com.hechang.codeagent.model.vo.LoginUserVO;
@@ -66,7 +67,7 @@ public class UserController {
 
     @GetMapping("/get/login")
     public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         return ResultUtils.success(userService.getLoginUserVO(loginUser));
     }
 
@@ -74,7 +75,7 @@ public class UserController {
      * 用户注销
      *
      * @param request 请求对象
-     * @return
+     * @return 返回结果
      */
     @PostMapping("/logout")
     public BaseResponse<Boolean> userLogout(HttpServletRequest request) {

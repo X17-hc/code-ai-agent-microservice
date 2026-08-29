@@ -3,14 +3,15 @@ package com.hechang.codeagent.aop;
 import com.hechang.codeagent.annotation.AuthCheck;
 import com.hechang.codeagent.exception.BusinessException;
 import com.hechang.codeagent.exception.ErrorCode;
+import com.hechang.codeagent.innerservice.InnerUserService;
 import com.hechang.codeagent.model.entity.User;
 import com.hechang.codeagent.model.enums.UserRoleEnum;
-import com.hechang.codeagent.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -25,7 +26,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class AuthInterceptor {
 
     @Resource
-    private UserService userService;
+    @Lazy
+    private InnerUserService userService;
 
     /**
      * 拦截器
@@ -40,7 +42,7 @@ public class AuthInterceptor {
         RequestAttributes requestAttributes = RequestContextHolder.currentRequestAttributes();
         HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
         // 获取当前登录用户
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         UserRoleEnum mustRoleEnum = UserRoleEnum.getEnumByValue(mustRole);
         // 不需要权限，直接放行
         if (mustRoleEnum == null) {

@@ -6,15 +6,16 @@ import com.hechang.codeagent.common.ResultUtils;
 import com.hechang.codeagent.constant.UserConstant;
 import com.hechang.codeagent.exception.ErrorCode;
 import com.hechang.codeagent.exception.ThrowUtils;
+import com.hechang.codeagent.innerservice.InnerUserService;
 import com.hechang.codeagent.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.hechang.codeagent.model.entity.ChatHistory;
 import com.hechang.codeagent.model.entity.User;
 import com.hechang.codeagent.service.ChatHistoryService;
-import com.hechang.codeagent.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -31,7 +32,8 @@ public class ChatHistoryController {
     private ChatHistoryService chatHistoryService;
 
     @Resource
-    private UserService userService;
+    @Lazy
+    private InnerUserService userService;
 
     /**
      * 分页查询某个应用的对话历史（游标查询）
@@ -47,7 +49,7 @@ public class ChatHistoryController {
                                                               @RequestParam(defaultValue = "10") int pageSize,
                                                               @RequestParam(required = false) LocalDateTime lastCreateTime,
                                                               HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         Page<ChatHistory> result = chatHistoryService.listAppChatHistoryByPage(appId, pageSize, lastCreateTime, loginUser);
         return ResultUtils.success(result);
     }

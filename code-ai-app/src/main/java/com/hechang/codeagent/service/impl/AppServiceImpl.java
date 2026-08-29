@@ -14,6 +14,8 @@ import com.hechang.codeagent.core.handler.StreamHandlerExecutor;
 import com.hechang.codeagent.exception.BusinessException;
 import com.hechang.codeagent.exception.ErrorCode;
 import com.hechang.codeagent.exception.ThrowUtils;
+import com.hechang.codeagent.innerservice.InnerScreenshotService;
+import com.hechang.codeagent.innerservice.InnerUserService;
 import com.hechang.codeagent.mapper.AppMapper;
 import com.hechang.codeagent.model.dto.app.AppAddRequest;
 import com.hechang.codeagent.model.dto.app.AppQueryRequest;
@@ -25,12 +27,11 @@ import com.hechang.codeagent.model.vo.AppVO;
 import com.hechang.codeagent.model.vo.UserVO;
 import com.hechang.codeagent.service.AppService;
 import com.hechang.codeagent.service.ChatHistoryService;
-import com.hechang.codeagent.service.ScreenshotService;
-import com.hechang.codeagent.service.UserService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -52,7 +53,8 @@ import java.util.stream.Collectors;
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
 
     @Resource
-    private UserService userService;
+    @Lazy
+    private InnerUserService userService;
 
     @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
@@ -66,8 +68,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private VueProjectBuilder vueProjectBuilder;
 
+    //代码迁移过程中，需要修改调用了其他服务的代码（比如截图服务）。可以先使用 @Lazy 注解代替实际引入，后续会通过 Dubbo 进行服务调用.
     @Resource
-    private ScreenshotService screenshotService;
+    @Lazy
+    private InnerScreenshotService screenshotService;
 
     @Resource
     private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
@@ -90,12 +94,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "应用代码生成类型错误");
         }
-        // 5. 在调用 AI 前，先保存用户消息到数据库中
-        chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
-        // 6. 调用 AI 生成代码（流式）
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
-        // 7. 收集 AI 响应的内容，并且在完成后保存记录到对话历史
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+//        // 5. 在调用 AI 前，先保存用户消息到数据库中
+//        chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+//        // 6. 调用 AI 生成代码（流式）
+//        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+//        // 7. 收集 AI 响应的内容，并且在完成后保存记录到对话历史
+//        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
     }
 
     @Override
