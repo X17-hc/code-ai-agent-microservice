@@ -6,8 +6,6 @@ import cn.hutool.json.JSONUtil;
 import com.hechang.codeagent.ai.model.message.*;
 import com.hechang.codeagent.ai.tools.BaseTool;
 import com.hechang.codeagent.ai.tools.ToolManager;
-import com.hechang.codeagent.constant.AppConstant;
-import com.hechang.codeagent.core.builder.VueProjectBuilder;
 import com.hechang.codeagent.model.entity.User;
 import com.hechang.codeagent.model.enums.ChatHistoryMessageTypeEnum;
 import com.hechang.codeagent.service.ChatHistoryService;
@@ -26,9 +24,6 @@ import java.util.Set;
 @Slf4j
 @Component
 public class JsonMessageStreamHandler {
-
-    @Resource
-    private VueProjectBuilder vueProjectBuilder;
 
     @Resource
     private ToolManager toolManager;
@@ -57,12 +52,14 @@ public class JsonMessageStreamHandler {
                 })
                 .filter(StrUtil::isNotEmpty) // 过滤空字串
                 .doOnComplete(() -> {
-                    // 流式响应完成后，添加 AI 消息到对话历史
-//                    String aiResponse = chatHistoryStringBuilder.toString();
-//                    chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
-                    // 异步构造 Vue 项目
-                    String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
-                    vueProjectBuilder.buildProjectAsync(projectPath);
+                    // Vue 项目构建由 AiCodeGeneratorFacade 在所有工具调用完成后同步执行。
+                    // 到达此处代表构建成功：仅记录摘要，避免把完整生成源码重复写入聊天表。
+                    chatHistoryService.addChatMessage(
+                            appId,
+                            "Vue 项目已生成并构建完成，可在右侧预览。",
+                            ChatHistoryMessageTypeEnum.AI.getValue(),
+                            loginUser.getId()
+                    );
                 })
                 .doOnError(error -> {
                     // 如果AI回复失败，也要记录错误消息
@@ -121,4 +118,4 @@ public class JsonMessageStreamHandler {
             }
         }
     }
-} 
+}

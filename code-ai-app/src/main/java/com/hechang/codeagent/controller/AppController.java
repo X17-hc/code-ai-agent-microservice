@@ -35,6 +35,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -73,21 +74,24 @@ public class AppController {
         User loginUser = InnerUserService.getLoginUser(request);
         // 调用服务生成代码（SSE 流式返回）
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
-        return contentFlux
+        Flux<ServerSentEvent<String>> contentEvents = contentFlux
                 .map(chunk -> {
                     Map<String, String> wrapper = Map.of("d", chunk);
                     String jsonData = JSONUtil.toJsonStr(wrapper);
                     return ServerSentEvent.<String>builder()
                             .data(jsonData)
                             .build();
-                })
-                .concatWith(Mono.just(
-                        // 发送结束事件
-                        ServerSentEvent.<String>builder()
-                                .event("done")
-                                .data("")
-                                .build()
-                ));
+                });
+        Flux<ServerSentEvent<String>> keepAliveEvents = Flux.interval(Duration.ofSeconds(10))
+                .map(ignored -> ServerSentEvent.<String>builder().comment("keep-alive").build());
+
+        // Vue 构建可能在 npm install 阶段持续数十秒没有模型 token；保持 SSE 连接可避免网关将它误判为空闲请求。
+        return contentEvents.publish(sharedContent -> sharedContent
+                        .mergeWith(keepAliveEvents.takeUntilOther(sharedContent.ignoreElements())))
+                .concatWith(Mono.just(ServerSentEvent.<String>builder()
+                        .event("done")
+                        .data("")
+                        .build()));
     }
 
     /**

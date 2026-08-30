@@ -23,8 +23,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.io.File;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * AI 代码生成门面类，组合代码生成和保存功能
@@ -32,6 +36,8 @@ import java.io.File;
 @Service
 @Slf4j
 public class AiCodeGeneratorFacade {
+
+    private static final Duration VUE_STREAM_INACTIVITY_TIMEOUT = Duration.ofMinutes(3);
 
     @Resource
     private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
@@ -105,32 +111,76 @@ public class AiCodeGeneratorFacade {
      * @return Flux<String> 流式响应
      */
     private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
-        return Flux.create(sink -> {
+        AtomicBoolean terminalHandled = new AtomicBoolean(false);
+        return Flux.<String>create(sink -> {
             tokenStream.onPartialResponse((String partialResponse) -> {
+                        if (terminalHandled.get()) {
+                            return;
+                        }
                         AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
                         sink.next(JSONUtil.toJsonStr(aiResponseMessage));
                     })
                     .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                        if (terminalHandled.get()) {
+                            return;
+                        }
                         ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
                         sink.next(JSONUtil.toJsonStr(toolRequestMessage));
                     })
                     .onToolExecuted((ToolExecution toolExecution) -> {
+                        if (terminalHandled.get()) {
+                            return;
+                        }
                         ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
                         sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
                     })
                     .onCompleteResponse((ChatResponse response) -> {
+                        if (!terminalHandled.compareAndSet(false, true)) {
+                            return;
+                        }
                         // 执行 Vue 项目构建（同步执行，确保预览时项目已就绪）
                         String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + "vue_project_" + appId;
-                        vueProjectBuilder.buildProject(projectPath);
+                        boolean buildSuccess = vueProjectBuilder.buildProject(projectPath);
+                        if (!buildSuccess) {
+                            sink.error(new BusinessException(ErrorCode.SYSTEM_ERROR,
+                                    "Vue 项目生成或构建失败，请检查是否已成功写入 package.json 和源文件"));
+                            return;
+                        }
                         sink.complete();
                     })
                     .onError((Throwable error) -> {
-                        sink.error(error);
-                        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "代码生成失败：" + error.getMessage());
-
+                        if (!terminalHandled.compareAndSet(false, true)) {
+                            return;
+                        }
+                        sink.error(new BusinessException(ErrorCode.SYSTEM_ERROR, "代码生成失败：" + error.getMessage()));
                     })
                     .start();
-        });
+        }).timeout(VUE_STREAM_INACTIVITY_TIMEOUT)
+                .onErrorResume(TimeoutException.class, error -> {
+                    if (!terminalHandled.compareAndSet(false, true)) {
+                        return Mono.empty();
+                    }
+                    log.warn("Vue 项目生成流连续 {} 分钟无输出，尝试构建已写入的项目: appId={}",
+                            VUE_STREAM_INACTIVITY_TIMEOUT.toMinutes(), appId);
+                    return buildVueProjectAfterInactivity(appId);
+                });
+    }
+
+    /**
+     * 上游模型流在文件已写入后失去响应时，尝试构建现有项目，避免前端无限等待。
+     */
+    Mono<String> buildVueProjectAfterInactivity(Long appId) {
+        return Mono.fromCallable(() -> {
+                    String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + "vue_project_" + appId;
+                    return vueProjectBuilder.buildProject(projectPath);
+                })
+                .flatMap(buildSuccess -> {
+                    if (buildSuccess) {
+                        return Mono.empty();
+                    }
+                    return Mono.error(new BusinessException(ErrorCode.SYSTEM_ERROR,
+                            "模型长时间未响应，且已生成的 Vue 项目构建失败"));
+                });
     }
 
     /**
@@ -142,23 +192,17 @@ public class AiCodeGeneratorFacade {
      * @return 流式响应
      */
     private Flux<String> processCodeStream(Flux<String> codeStream, CodeGenTypeEnum codeGenType, Long appId) {
-        // 字符串拼接器，用于当流式返回所有的代码之后，再保存代码
+        // 字符串拼接器，用于在流式返回所有代码之后保存文件。
         StringBuilder codeBuilder = new StringBuilder();
-        return codeStream.doOnNext(chunk -> {
-            // 实时收集代码片段
-            codeBuilder.append(chunk);
-        }).doOnComplete(() -> {
-            // 流式返回完成后，保存代码
-            try {
-                String completeCode = codeBuilder.toString();
-                // 使用执行器解析代码
-                Object parsedResult = CodeParserExecutor.executeParser(completeCode, codeGenType);
-                // 使用执行器保存代码
-                File saveDir = CodeFileSaverExecutor.executeSaver(parsedResult, codeGenType, appId);
-                log.info("保存成功，目录为：{}", saveDir.getAbsolutePath());
-            } catch (Exception e) {
-                log.error("保存失败: {}", e.getMessage());
-            }
-        });
+        return codeStream
+                .doOnNext(codeBuilder::append)
+                // 保存失败必须传递给 SSE 客户端，不能只记录日志后让前端显示失真的预览。
+                .concatWith(Mono.defer(() -> {
+                    String completeCode = codeBuilder.toString();
+                    Object parsedResult = CodeParserExecutor.executeParser(completeCode, codeGenType);
+                    File saveDir = CodeFileSaverExecutor.executeSaver(parsedResult, codeGenType, appId);
+                    log.info("保存成功，目录为：{}", saveDir.getAbsolutePath());
+                    return Mono.empty();
+                }));
     }
 }

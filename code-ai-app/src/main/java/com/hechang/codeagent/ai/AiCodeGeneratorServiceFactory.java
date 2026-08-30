@@ -101,9 +101,11 @@ public class AiCodeGeneratorServiceFactory {
                         SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
                 yield AiServices.builder(AiCodeGeneratorService.class)
                         .streamingChatModel(reasoningStreamingChatModel)
-                        .maxSequentialToolsInvocations(20) //最多连续调用20次工具
+                        .maxSequentialToolsInvocations(30) // 与提示词的“文件总数小于 30”约束保持一致
                         .chatMemoryProvider(memoryId -> chatMemory)
-                        .tools((Object) toolManager.getAllTools())
+                        // 不要把 BaseTool[] 强转为单个 Object；否则可变参数只会收到“一个数组对象”，
+                        // LangChain4j 无法从数组类中发现 @Tool 方法，最终请求不会携带 tools 字段。
+                        .tools((Object[]) toolManager.getAllTools())
                         .inputGuardrails(new PromptSafetyInputGuardrail()) // 添加输入护轨
                         .outputGuardrails(new RetryOutputGuardrail()) // 添加输出护轨-如果用了输出护轨，可能会导致流式输出的响应不及时，等到AI输出结束才一起返回，所以为了追求流式输出效果，建议不要通过护轨方式进行重试
                         // 处理工具调用幻觉问题

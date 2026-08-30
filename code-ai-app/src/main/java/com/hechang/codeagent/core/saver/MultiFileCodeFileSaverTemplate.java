@@ -29,9 +29,16 @@ public class MultiFileCodeFileSaverTemplate extends CodeFileSaverTemplate<MultiF
     @Override
     protected void validateInput(MultiFileCodeResult result) {
         super.validateInput(result);
-        // 至少要有 HTML 代码，CSS 和 JS 可以为空
+        // 多文件模式的契约是 HTML、CSS、JS 三个完整文件。缺失任一文件时不能生成一个
+        // 看似成功、实际以浏览器默认样式渲染的页面。
         if (StrUtil.isBlank(result.getHtmlCode())) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "HTML代码内容不能为空");
+        }
+        if (StrUtil.isBlank(result.getCssCode())) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "多文件代码不完整：缺少 style.css 内容，请重新生成");
+        }
+        if (StrUtil.isBlank(result.getJsCode())) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "多文件代码不完整：缺少 script.js 内容，请重新生成");
         }
     }
 }

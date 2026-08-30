@@ -12,9 +12,12 @@ import java.util.regex.Pattern;
  */
 public class MultiFileCodeParser implements CodeParser<MultiFileCodeResult> {
 
-    private static final Pattern HTML_CODE_PATTERN = Pattern.compile("```html\\s*\\n([\\s\\S]*?)```", Pattern.CASE_INSENSITIVE);
-    private static final Pattern CSS_CODE_PATTERN = Pattern.compile("```css\\s*\\n([\\s\\S]*?)```", Pattern.CASE_INSENSITIVE);
-    private static final Pattern JS_CODE_PATTERN = Pattern.compile("```(?:js|javascript)\\s*\\n([\\s\\S]*?)```", Pattern.CASE_INSENSITIVE);
+    /**
+     * 允许模型在语言标签后补充文件名，例如 ```css style.css，兼容 CRLF 与 LF 换行。
+     */
+    private static final Pattern HTML_CODE_PATTERN = createCodeBlockPattern("html|htm");
+    private static final Pattern CSS_CODE_PATTERN = createCodeBlockPattern("css");
+    private static final Pattern JS_CODE_PATTERN = createCodeBlockPattern("js|javascript|mjs");
 
     @Override
     public MultiFileCodeResult parseCode(String codeContent) {
@@ -51,5 +54,10 @@ public class MultiFileCodeParser implements CodeParser<MultiFileCodeResult> {
             return matcher.group(1);
         }
         return null;
+    }
+
+    private static Pattern createCodeBlockPattern(String language) {
+        return Pattern.compile(
+                "(?ims)^[\\t ]*```[\\t ]*(?:" + language + ")(?:[\\t ]+[^\\r\\n`]*)?[\\t ]*\\R(.*?)^[\\t ]*```[\\t ]*$");
     }
 }

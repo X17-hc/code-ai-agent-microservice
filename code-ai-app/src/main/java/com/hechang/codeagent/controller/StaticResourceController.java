@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.HandlerMapping;
 
-import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -85,15 +84,11 @@ public class StaticResourceController {
             return ResponseEntity.notFound().build();
         }
 
-        try {
-            Resource resource = new FileSystemResource(targetPath);
-            String contentType = Files.probeContentType(targetPath);
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_TYPE, contentType == null ? getContentTypeWithCharset(targetPath.toString()) : contentType)
-                    .body(resource);
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        Resource resource = new FileSystemResource(targetPath);
+        return ResponseEntity.ok()
+                // Windows 通常将 .js 识别为 text/plain；Vite 的模块脚本必须使用 JavaScript MIME 类型。
+                .header(HttpHeaders.CONTENT_TYPE, getContentTypeWithCharset(targetPath.toString()))
+                .body(resource);
     }
 
     /**

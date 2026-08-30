@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
+import java.time.Duration;
+
 /**
  * 推理流式模型配置
  */
@@ -27,6 +29,8 @@ public class ReasoningStreamingChatModelConfig {
     private Boolean logRequests;
     private Boolean logResponses;
 
+    private Duration timeout;
+
 
     /**
      * 推理流式模型（用于 Vue 项目生成，带工具调用）
@@ -39,6 +43,7 @@ public class ReasoningStreamingChatModelConfig {
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .modelName(modelName)
+                .timeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();

@@ -42,32 +42,34 @@ langchain4j:
       api-key: ${DEEPSEEK_API_KEY}
       model-name: deepseek-v4-flash
       max-tokens: 8192
-      log-requests: true
-      log-responses: true
+      log-requests: false
+      log-responses: false
     streaming-chat-model:
       base-url: https://api.deepseek.com
       api-key: ${DEEPSEEK_API_KEY}
       model-name: deepseek-v4-flash
-      max-tokens: 8192
-      log-requests: true
-      log-responses: true
+      # 多文件网站必须输出 HTML、CSS、JS 三段完整代码，8192 容易在 HTML 后截断。
+      max-tokens: 16384
+      log-requests: false
+      log-responses: false
     # 推理 AI 模型配置（用于复杂的推理任务）
     reasoning-streaming-chat-model:
       base-url: https://api.deepseek.com
       api-key: ${DEEPSEEK_API_KEY}
       model-name: deepseek-v4-flash
+      timeout: 90s
       max-tokens: 32768
       temperature: 0.1
-      log-requests: true
-      log-responses: true
+      log-requests: false
+      log-responses: false
     # 智能路由 AI 模型配置
     routing-chat-model:
       base-url: https://api.deepseek.com
       api-key: ${DEEPSEEK_API_KEY}
       model-name: deepseek-v4-flash
       max-tokens: 1000
-      log-requests: true
-      log-responses: true
+      log-requests: false
+      log-responses: false
 # springdoc-openapi
 springdoc:
   group-configs:
