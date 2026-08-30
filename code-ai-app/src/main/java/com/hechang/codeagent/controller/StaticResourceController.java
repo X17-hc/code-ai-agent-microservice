@@ -77,6 +77,10 @@ public class StaticResourceController {
         if (!targetPath.startsWith(resourceRoot)) {
             return ResponseEntity.notFound().build();
         }
+        // Vue 生产预览通常请求 /dist/，该路径是目录而非文件；目录应返回其中的入口页。
+        if (Files.isDirectory(targetPath)) {
+            targetPath = targetPath.resolve("index.html");
+        }
         if (!Files.isRegularFile(targetPath) && spaFallback && !resourcePath.substring(1).contains(".")) {
             targetPath = resourceRoot.resolve("index.html");
         }

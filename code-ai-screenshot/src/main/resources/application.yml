@@ -2,7 +2,7 @@ spring:
   config:
     import: optional:file:./.env[.properties]
   application:
-    name: yu-ai-code-screenshot
+    name: code-ai-screenshot
 server:
   port: 8127
   servlet:
