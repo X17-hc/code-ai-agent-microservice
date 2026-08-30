@@ -30,6 +30,10 @@ server:
     session:
       cookie:
         max-age: 2592000
+app:
+  deploy:
+    # 通过 APP_DEPLOY_PUBLIC_BASE_URL 覆盖；接入 Higress 后配置为其对外静态资源路由。
+    public-base-url: ${APP_DEPLOY_PUBLIC_BASE_URL:http://localhost:8125/api/static/deployments}
 # AI
 langchain4j:
   open-ai:
