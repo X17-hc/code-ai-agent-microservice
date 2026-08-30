@@ -33,8 +33,8 @@ public class RedissonConfig {
         SingleServerConfig singleServerConfig = config.useSingleServer()
                 .setAddress(address)
                 .setDatabase(redisDatabase)
-                .setPassword(redisPassword)
                 .setConnectionPoolSize(10)
+                .setConnectionMinimumIdleSize(4)  //不能违反 连接池总数 >= 最小空闲连接数 的约束，最小空闲连接数默认24，设置为4
                 .setIdleConnectionTimeout(30000)
                 .setConnectTimeout(5000)
                 .setTimeout(3000)

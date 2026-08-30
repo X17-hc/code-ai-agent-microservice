@@ -5,7 +5,7 @@ import com.hechang.codeagent.ai.model.HtmlCodeResult;
 /**
  * HTML单文件代码解析器
  */
-public class HtmlCoderParser implements CodeParser<HtmlCodeResult> {
+public class HtmlCodeParser implements CodeParser<HtmlCodeResult> {
 
     /**
      * 解析HTML单文件代码

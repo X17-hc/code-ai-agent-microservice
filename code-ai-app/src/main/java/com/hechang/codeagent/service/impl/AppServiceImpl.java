@@ -31,6 +31,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -52,8 +53,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
 
-    @Resource
-    @Lazy
+    /**
+     * @DubboReference 是 Dubbo 框架提供的服务消费者注解，用于自动注入远程服务的代理对象。
+     * 当 Spring 容器启动时，Dubbo 会根据注解信息从 Nacos 注册中心查找对应的服务提供者地址，
+     *  然后创建代理对象注入到当前服务中。通过这个代理对象调用方法时，Dubbo 会自动将调用请求通过网络发送到远程服务，并将结果返回给调用方，
+     *  整个过程对开发者来说 就像调用本地方法一样简单。
+     */
+    @DubboReference
     private InnerUserService userService;
 
     @Resource
@@ -69,8 +75,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private VueProjectBuilder vueProjectBuilder;
 
     //代码迁移过程中，需要修改调用了其他服务的代码（比如截图服务）。可以先使用 @Lazy 注解代替实际引入，后续会通过 Dubbo 进行服务调用.
-    @Resource
-    @Lazy
+    //    @Resource
+    //    @Lazy
+    @DubboReference
     private InnerScreenshotService screenshotService;
 
     @Resource
@@ -94,12 +101,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "应用代码生成类型错误");
         }
-//        // 5. 在调用 AI 前，先保存用户消息到数据库中
-//        chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
-//        // 6. 调用 AI 生成代码（流式）
-//        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
-//        // 7. 收集 AI 响应的内容，并且在完成后保存记录到对话历史
-//        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+        // 5. 在调用 AI 前，先保存用户消息到数据库中
+        chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        // 6. 调用 AI 生成代码（流式）
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        // 7. 收集 AI 响应的内容，并且在完成后保存记录到对话历史
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
     }
 
     @Override

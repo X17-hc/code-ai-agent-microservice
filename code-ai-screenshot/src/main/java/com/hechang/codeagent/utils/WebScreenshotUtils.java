@@ -7,7 +7,6 @@ import cn.hutool.core.util.StrUtil;
 import com.hechang.codeagent.exception.BusinessException;
 import com.hechang.codeagent.exception.ErrorCode;
 import io.github.bonigarcia.wdm.WebDriverManager;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.JavascriptExecutor;
@@ -27,23 +26,23 @@ import java.util.UUID;
 @Component
 public class WebScreenshotUtils {
 
-    private WebDriver webDriver;
+    private final Object webDriverLock = new Object();
 
-    @PostConstruct
-    public void init() {
-        final int DEFAULT_WIDTH = 1600;
-        final int DEFAULT_HEIGHT = 900;
-        webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
-    }
+    private WebDriver webDriver;
 
     @PreDestroy
     public void destroy() {
-        if (webDriver != null) {
+        synchronized (webDriverLock) {
+            if (webDriver == null) {
+                return;
+            }
             try {
                 webDriver.quit();
                 log.info("Chrome WebDriver 已关闭");
             } catch (Exception e) {
                 log.error("关闭 Chrome WebDriver 失败", e);
+            } finally {
+                webDriver = null;
             }
         }
     }
@@ -59,26 +58,38 @@ public class WebScreenshotUtils {
             log.error("网页截图失败，url为空");
             return null;
         }
-        try {
-            String rootPath = System.getProperty("user.dir") + "/tmp/screenshots/" + UUID.randomUUID().toString().substring(0, 8);
-            FileUtil.mkdir(rootPath);
-            final String IMAGE_SUFFIX = ".png";
-            String imageSavePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + IMAGE_SUFFIX;
-            webDriver.get(webUrl);
-            waitForPageLoad(webDriver);
-            byte[] screenshotBytes = ((TakesScreenshot) webDriver).getScreenshotAs(OutputType.BYTES);
-            saveImage(screenshotBytes, imageSavePath);
-            log.info("原始截图保存成功：{}", imageSavePath);
-            final String COMPRESS_SUFFIX = "_compressed.jpg";
-            String compressedImagePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + COMPRESS_SUFFIX;
-            compressImage(imageSavePath, compressedImagePath);
-            log.info("压缩图片保存成功：{}", compressedImagePath);
-            FileUtil.del(imageSavePath);
-            return compressedImagePath;
-        } catch (Exception e) {
-            log.error("网页截图失败：{}", webUrl, e);
-            return null;
+        synchronized (webDriverLock) {
+            try {
+                WebDriver driver = getOrCreateWebDriver();
+                String rootPath = System.getProperty("user.dir") + "/tmp/screenshots/" + UUID.randomUUID().toString().substring(0, 8);
+                FileUtil.mkdir(rootPath);
+                final String IMAGE_SUFFIX = ".png";
+                String imageSavePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + IMAGE_SUFFIX;
+                driver.get(webUrl);
+                waitForPageLoad(driver);
+                byte[] screenshotBytes = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+                saveImage(screenshotBytes, imageSavePath);
+                log.info("原始截图保存成功：{}", imageSavePath);
+                final String COMPRESS_SUFFIX = "_compressed.jpg";
+                String compressedImagePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + COMPRESS_SUFFIX;
+                compressImage(imageSavePath, compressedImagePath);
+                log.info("压缩图片保存成功：{}", compressedImagePath);
+                FileUtil.del(imageSavePath);
+                return compressedImagePath;
+            } catch (Exception e) {
+                log.error("网页截图失败：{}", webUrl, e);
+                return null;
+            }
         }
+    }
+
+    private WebDriver getOrCreateWebDriver() {
+        if (webDriver == null) {
+            final int DEFAULT_WIDTH = 1600;
+            final int DEFAULT_HEIGHT = 900;
+            webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        }
+        return webDriver;
     }
 
     private WebDriver initChromeDriver(int width, int height) {
